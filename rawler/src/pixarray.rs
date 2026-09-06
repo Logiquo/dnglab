@@ -461,6 +461,121 @@ where
 
 unsafe impl<T, const N: usize> Sync for Color2DPtr<T, N> {}
 
+/// Border-coordinate access for 2D pixel containers such as [`crate::pixarray::Pix2D`]
+/// and [`crate::pixarray::Color2D`].
+///
+/// Negative or out-of-range coordinates are mapped back into the image according
+/// to the selected edge-padding rule. For an input row `a b c d e f g` and a
+/// two-pixel border, the rules are:
+pub trait BorderPadding<T> {
+  /// Access a pixel using reflected padding.
+  ///
+  /// When `repeat_edge` is `true`, the edge pixel is repeated: `b a | a b c d
+  /// e f g | g f`. This is OpenCV `BORDER_REFLECT`, NumPy
+  /// `pad(mode="symmetric")`, and SciPy `ndimage` `mode="reflect"`.
+  ///
+  /// When `repeat_edge` is `false`, the edge pixel is not repeated: `c b | a b
+  /// c d e f g | f e`. This is OpenCV `BORDER_REFLECT_101` (also
+  /// `BORDER_DEFAULT`), NumPy `pad(mode="reflect")`, and SciPy `ndimage`
+  /// `mode="mirror"`.
+  fn at_reflect(&self, row: isize, col: isize, repeat_edge: bool) -> &T;
+
+  /// Access a pixel using constant-value padding.
+  ///
+  /// Out-of-range coordinates return `constant`, e.g. passing `0` produces
+  /// `0 0 | a b c d e f g | 0 0`. This is OpenCV `BORDER_CONSTANT`, NumPy
+  /// `pad(mode="constant", constant_values=constant)`, and SciPy `ndimage`
+  /// `mode="constant", cval=constant`.
+  fn at_padding<'a>(&'a self, row: isize, col: isize, constant: &'a T) -> &'a T;
+}
+
+impl<T> BorderPadding<T> for Pix2D<T>
+where
+  T: Copy + Default + Send,
+{
+  #[inline(always)]
+  fn at_reflect(&self, row: isize, col: isize, repeat_edge: bool) -> &T {
+    if repeat_edge {
+      let new_row = reflect_repeat_edge(row, self.height);
+      let new_col = reflect_repeat_edge(col, self.width);
+      self.at(new_row, new_col)
+    } else {
+      let new_row = reflect_unique_edge(row, self.height);
+      let new_col = reflect_unique_edge(col, self.width);
+      self.at(new_row, new_col)
+    }
+  }
+
+  #[inline(always)]
+  fn at_padding<'a>(&'a self, row: isize, col: isize, constant: &'a T) -> &'a T {
+    if row >= 0 && (row as usize) < self.height && col >= 0 && (col as usize) < self.width {
+      self.at(row as usize, col as usize)
+    } else {
+      constant
+    }
+  }
+}
+
+impl<T, const N: usize> BorderPadding<[T; N]> for Color2D<T, N>
+where
+  T: Copy + Clone + Default + Send,
+  [T; N]: Default,
+{
+  #[inline(always)]
+  fn at_reflect(&self, row: isize, col: isize, repeat_edge: bool) -> &[T; N] {
+    if repeat_edge {
+      let new_row = reflect_repeat_edge(row, self.height);
+      let new_col = reflect_repeat_edge(col, self.width);
+      self.at(new_row, new_col)
+    } else {
+      let new_row = reflect_unique_edge(row, self.height);
+      let new_col = reflect_unique_edge(col, self.width);
+      self.at(new_row, new_col)
+    }
+  }
+
+  #[inline(always)]
+  fn at_padding<'a>(&'a self, row: isize, col: isize, constant: &'a [T; N]) -> &'a [T; N] {
+    if row >= 0 && (row as usize) < self.height && col >= 0 && (col as usize) < self.width {
+      self.at(row as usize, col as usize)
+    } else {
+      constant
+    }
+  }
+}
+
+#[inline(always)]
+fn reflect_repeat_edge(i: isize, n: usize) -> usize {
+  if 0 <= i && i < n as isize {
+    return i as usize;
+  }
+
+  // `a b c d` becomes `d c b a | a b c d | d c b a`.
+  let n = n as isize;
+  debug_assert!(n > 0, "cannot reflect an empty dimension");
+  let period = n * 2;
+  let index = i.rem_euclid(period);
+  (if index < n { index } else { period - 1 - index }) as usize
+}
+
+#[inline(always)]
+fn reflect_unique_edge(i: isize, n: usize) -> usize {
+  if 0 <= i && i < n as isize {
+    return i as usize;
+  }
+
+  let n = n as isize;
+  debug_assert!(n > 0, "cannot reflect an empty dimension");
+  if n == 1 {
+    return 0;
+  }
+
+  // `a b c d` becomes `d c b | a b c d | c b a`.
+  let period = (n - 1) * 2;
+  let index = i.rem_euclid(period);
+  (if index < n { index } else { period - index }) as usize
+}
+
 /// Deinterleave a 2x2 interleaved buffer
 pub fn deinterleave2x2(input: &PixU16) -> crate::Result<PixU16> {
   if input.width % 2 != 0 || input.height % 2 != 0 {

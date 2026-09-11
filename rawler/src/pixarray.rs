@@ -206,7 +206,10 @@ where
   pub fn view(&self, area: Rect) -> Pix2DView<'_, T> {
     debug_assert!(self.initialized);
     debug_assert!(area.p.x <= self.width && area.d.w <= self.width - area.p.x, "view extends beyond image width");
-    debug_assert!(area.p.y <= self.height && area.d.h <= self.height - area.p.y, "view extends beyond image height");
+    debug_assert!(
+      area.p.y <= self.height && area.d.h <= self.height - area.p.y,
+      "view extends beyond image height"
+    );
     Pix2DView { rect: area, inner: self }
   }
 
@@ -358,14 +361,14 @@ where
 
 unsafe impl<T> Sync for SharedPix2D<T> where T: SubPixel {}
 
-pub struct Pix2DView<'a, T> {
+pub struct Pix2DView<'a, T: SubPixel> {
   pub rect: Rect,
   pub inner: &'a Pix2D<T>,
 }
 
 impl<'a, T> Pix2DView<'a, T>
 where
-  T: Copy + Default + Send,
+  T: SubPixel,
 {
   pub fn width(&self) -> usize {
     self.rect.d.w
@@ -383,8 +386,14 @@ where
   }
 
   pub fn view(&self, area: Rect) -> Pix2DView<'a, T> {
-    debug_assert!(area.p.x <= self.rect.d.w && area.d.w <= self.rect.d.w - area.p.x, "view extends beyond image width");
-    debug_assert!(area.p.y <= self.rect.d.h && area.d.h <= self.rect.d.h - area.p.y, "view extends beyond image height");
+    debug_assert!(
+      area.p.x <= self.rect.d.w && area.d.w <= self.rect.d.w - area.p.x,
+      "view extends beyond image width"
+    );
+    debug_assert!(
+      area.p.y <= self.rect.d.h && area.d.h <= self.rect.d.h - area.p.y,
+      "view extends beyond image height"
+    );
     Pix2DView {
       rect: Rect::new(Point::new(area.p.x + self.rect.p.x, area.p.y + self.rect.p.y), area.d),
       inner: self.inner,
@@ -532,7 +541,10 @@ where
 
   pub fn view(&self, area: Rect) -> Color2DView<'_, T, N> {
     debug_assert!(area.p.x <= self.width && area.d.w <= self.width - area.p.x, "view extends beyond image width");
-    debug_assert!(area.p.y <= self.height && area.d.h <= self.height - area.p.y, "view extends beyond image height");
+    debug_assert!(
+      area.p.y <= self.height && area.d.h <= self.height - area.p.y,
+      "view extends beyond image height"
+    );
     Color2DView { rect: area, inner: self }
   }
 
@@ -589,8 +601,14 @@ where
   }
 
   pub fn view(&self, area: Rect) -> Color2DView<'a, T, N> {
-    debug_assert!(area.p.x <= self.rect.d.w && area.d.w <= self.rect.d.w - area.p.x, "view extends beyond image width");
-    debug_assert!(area.p.y <= self.rect.d.h && area.d.h <= self.rect.d.h - area.p.y, "view extends beyond image height");
+    debug_assert!(
+      area.p.x <= self.rect.d.w && area.d.w <= self.rect.d.w - area.p.x,
+      "view extends beyond image width"
+    );
+    debug_assert!(
+      area.p.y <= self.rect.d.h && area.d.h <= self.rect.d.h - area.p.y,
+      "view extends beyond image height"
+    );
     Color2DView {
       rect: Rect::new(Point::new(area.p.x + self.rect.p.x, area.p.y + self.rect.p.y), area.d),
       inner: self.inner,
@@ -702,7 +720,7 @@ pub trait BorderPadding<T> {
 
 impl<T> BorderPadding<T> for Pix2D<T>
 where
-  T: Copy + Default + Send,
+  T: SubPixel,
 {
   #[inline(always)]
   fn at_reflect(&self, row: isize, col: isize, repeat_edge: bool) -> &T {
@@ -725,7 +743,7 @@ where
 
 impl<T> BorderPadding<T> for Pix2DView<'_, T>
 where
-  T: Copy + Default + Send,
+  T: SubPixel,
 {
   #[inline(always)]
   fn at_reflect(&self, row: isize, col: isize, repeat_edge: bool) -> &T {
@@ -839,6 +857,10 @@ macro_rules! alloc_image_f32_plain {
       $crate::pixarray::PixF32::new_uninit($width, $height)
     } else {
       $crate::pixarray::PixF32::new($width, $height)
+    }
+  }};
+}
+
 #[macro_export]
 macro_rules! alloc_image_plain {
   ($width:expr, $height:expr, $dummy: expr) => {{

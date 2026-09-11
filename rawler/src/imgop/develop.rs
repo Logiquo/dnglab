@@ -25,7 +25,7 @@ use crate::{
 use super::{
   Dim2, Rect, convert_from_f32_scaled_u16,
   raw::{map_3ch_to_rgb, map_4ch_to_rgb},
-  sensor::bayer::{bilinear::Bilinear4Channel, ppg::PPGDemosaic},
+  sensor::bayer::{bilinear::Bilinear4Channel, menon::MenonDemosaic, ppg::PPGDemosaic},
   xyz::Illuminant,
 };
 
@@ -76,6 +76,18 @@ pub enum ProcessingStep {
   SRgb,
 }
 
+/// The demosaicing algorithm to use.
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Default)]
+pub enum DemosaicAlgorithm {
+  /// Use PPG for Bayer images.
+  #[default]
+  Quality,
+  /// Explicitly use PPG for Bayer images.
+  BayerPPG,
+  /// Use Menon's directional filtering algorithm for Bayer images.
+  BayerMenon,
+}
+
 pub struct RawDevelopBuilder {}
 
 #[derive(Clone)]
@@ -123,6 +135,7 @@ impl Intermediate {
 #[derive(Clone)]
 pub struct RawDevelop {
   pub steps: Vec<ProcessingStep>,
+  pub demosaic_algorithm: DemosaicAlgorithm,
 }
 
 impl Default for RawDevelop {
@@ -138,13 +151,17 @@ impl Default for RawDevelop {
         ProcessingStep::CropDefault,
         ProcessingStep::SRgb,
       ],
+      demosaic_algorithm: DemosaicAlgorithm::default(),
     }
   }
 }
 
 impl RawDevelop {
   pub fn new_with(steps: &[ProcessingStep]) -> Self {
-    Self { steps: Vec::from(steps) }
+    Self {
+      steps: Vec::from(steps),
+      demosaic_algorithm: DemosaicAlgorithm::default(),
+    }
   }
 
   /*
@@ -198,8 +215,10 @@ impl RawDevelop {
               pixels.rect()
             };
             if config.cfa.is_rgb() && config.sensor == SensorType::Bayer {
-              let ppg = PPGDemosaic::new();
-              let mut rgb = ppg.demosaic(&pixels, &config.cfa, &config.colors, roi);
+              let mut rgb = match self.demosaic_algorithm {
+                DemosaicAlgorithm::Quality | DemosaicAlgorithm::BayerPPG => PPGDemosaic::new().demosaic(&pixels, &config.cfa, &config.colors, roi),
+                DemosaicAlgorithm::BayerMenon => MenonDemosaic::new().demosaic(&pixels, &config.cfa, &config.colors, roi),
+              };
 
               // Fuji Rotate
               if self.steps.contains(&ProcessingStep::FujiRotate)

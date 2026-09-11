@@ -196,12 +196,11 @@ mod tests {
 
     for (index, tile) in tiles.iter().enumerate() {
       for other in tiles.iter().skip(index + 1) {
-        assert!(
-          tile.core.intersection(&other.core).is_empty(),
-          "overlapping cores: {:?} and {:?}",
-          tile.core,
-          other.core
-        );
+        let disjoint = tile.core.p.x + tile.core.d.w <= other.core.p.x
+          || other.core.p.x + other.core.d.w <= tile.core.p.x
+          || tile.core.p.y + tile.core.d.h <= other.core.p.y
+          || other.core.p.y + other.core.d.h <= tile.core.p.y;
+        assert!(disjoint, "overlapping cores: {:?} and {:?}", tile.core, other.core);
       }
     }
   }

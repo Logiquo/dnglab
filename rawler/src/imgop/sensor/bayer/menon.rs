@@ -13,12 +13,13 @@ use crate::{
   cfa::{CFA, CFA_COLOR_B, CFA_COLOR_G, CFA_COLOR_R, PlaneColor},
   imgop::{
     Dim2, Rect,
-    sensor::tiles::{DemosaicTiler, Tile},
+    sensor::{
+      Demosaic,
+      tiles::{DemosaicTiler, Tile},
+    },
   },
   pixarray::{BorderPadding, Color2D, Pix2DView, PixF32, PixU16, RgbF32},
 };
-
-use super::Demosaic;
 
 const TILE_HALO: Dim2 = Dim2 { w: 8, h: 8 };
 const TILE_SIZE: Dim2 = Dim2 { w: 256, h: 256 };

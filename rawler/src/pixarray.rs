@@ -289,11 +289,28 @@ impl<'a, T> Pix2DView<'a, T>
 where
   T: Copy + Default + Send,
 {
+  pub fn width(&self) -> usize {
+    self.rect.d.w
+  }
+
+  pub fn height(&self) -> usize {
+    self.rect.d.h
+  }
+
   #[inline(always)]
   pub fn at(&self, row: usize, col: usize) -> &T {
     debug_assert!(row < self.rect.d.h, "row is outside the view");
     debug_assert!(col < self.rect.d.w, "column is outside the view");
     self.inner.at(row + self.rect.p.y, col + self.rect.p.x)
+  }
+
+  pub fn view(&self, area: Rect) -> Pix2DView<'a, T> {
+    debug_assert!(area.p.x <= self.rect.d.w && area.d.w <= self.rect.d.w - area.p.x, "view extends beyond image width");
+    debug_assert!(area.p.y <= self.rect.d.h && area.d.h <= self.rect.d.h - area.p.y, "view extends beyond image height");
+    Pix2DView {
+      rect: Rect::new(Point::new(area.p.x + self.rect.p.x, area.p.y + self.rect.p.y), area.d),
+      inner: self.inner,
+    }
   }
 }
 
@@ -456,11 +473,28 @@ where
   T: Copy + Clone + Default + Send,
   [T; N]: Default,
 {
+  pub fn width(&self) -> usize {
+    self.rect.d.w
+  }
+
+  pub fn height(&self) -> usize {
+    self.rect.d.h
+  }
+
   #[inline(always)]
   pub fn at(&self, row: usize, col: usize) -> &[T; N] {
     debug_assert!(row < self.rect.d.h, "row is outside the view");
     debug_assert!(col < self.rect.d.w, "column is outside the view");
     self.inner.at(row + self.rect.p.y, col + self.rect.p.x)
+  }
+
+  pub fn view(&self, area: Rect) -> Color2DView<'a, T, N> {
+    debug_assert!(area.p.x <= self.rect.d.w && area.d.w <= self.rect.d.w - area.p.x, "view extends beyond image width");
+    debug_assert!(area.p.y <= self.rect.d.h && area.d.h <= self.rect.d.h - area.p.y, "view extends beyond image height");
+    Color2DView {
+      rect: Rect::new(Point::new(area.p.x + self.rect.p.x, area.p.y + self.rect.p.y), area.d),
+      inner: self.inner,
+    }
   }
 }
 

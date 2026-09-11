@@ -15,7 +15,11 @@ use super::{
   Dim2, Rect, convert_from_f32_scaled_u16,
   raw::{map_3ch_to_rgb, map_4ch_to_rgb},
   sensor::bayer::{
-    bilinear::Bilinear4Channel, ppg::PPGDemosaic, superpixel::{Superpixel4Channel, SuperpixelQuarterRes3Channel}, Demosaic,
+    Demosaic,
+    bilinear::Bilinear4Channel,
+    ppg::PPGDemosaic,
+    menon::MenonDemosaic,
+    superpixel::{Superpixel4Channel, SuperpixelQuarterRes3Channel},
   },
   sensor::xtrans::demosaic::{XTransDemosaic, XTransSuperpixelDemosaic},
   xyz::Illuminant,
@@ -41,6 +45,8 @@ pub enum DemosaicAlgorithm {
   /// High-speed demosaicing using a superpixel algorithm (e.g. for thumbnails).
   /// This reduces image dimensions by a factor of four (quarter width and height).
   Speed,
+  BayerPPG,
+  BayerMenon,
 }
 
 pub struct RawDevelopBuilder {}
@@ -172,7 +178,7 @@ impl RawDevelop {
               if config.cfa.width == 6 && config.cfa.height == 6 {
                 log::info!("X-Trans pattern (6x6) detected. Applying X-Trans demosaicing ({:?}).", self.demosaic_algorithm);
                 match self.demosaic_algorithm {
-                  DemosaicAlgorithm::Quality => {
+                  DemosaicAlgorithm::Quality | DemosaicAlgorithm::BayerPPG | DemosaicAlgorithm::BayerMenon => {
                     let xtrans_demosaic = XTransDemosaic::new();
                     Intermediate::ThreeColor(xtrans_demosaic.demosaic(pixels, &config.cfa, &config.colors, roi))
                   }
@@ -184,9 +190,13 @@ impl RawDevelop {
               } else {
                   log::info!("RGB Bayer-like pattern detected. Applying Bayer demosaicing.");
                   match self.demosaic_algorithm {
-                      DemosaicAlgorithm::Quality => {
+                      DemosaicAlgorithm::Quality | DemosaicAlgorithm::BayerPPG => {
                           let ppg = PPGDemosaic::new();
                           Intermediate::ThreeColor(ppg.demosaic(pixels, &config.cfa, &config.colors, roi))
+                      }
+                      DemosaicAlgorithm::BayerMenon => {
+                        let menon = MenonDemosaic::new();
+                        Intermediate::ThreeColor(menon.demosaic(pixels, &config.cfa, &config.colors, roi))
                       }
                       DemosaicAlgorithm::Speed => {
                           let superpixel = SuperpixelQuarterRes3Channel::new();
@@ -197,7 +207,7 @@ impl RawDevelop {
             } else if config.cfa.unique_colors() == 4 {
                 log::info!("4-Color pattern detected. Applying 4-channel demosaicing.");
                 match self.demosaic_algorithm {
-                    DemosaicAlgorithm::Quality => {
+                    DemosaicAlgorithm::Quality | DemosaicAlgorithm::BayerPPG | DemosaicAlgorithm::BayerMenon => {
                         let linear = Bilinear4Channel::new();
                         Intermediate::FourColor(linear.demosaic(&pixels, &config.cfa, &config.colors, roi))
                     }

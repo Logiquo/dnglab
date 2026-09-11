@@ -100,17 +100,20 @@ unsafe impl Send for Tile<'_> {}
 
 impl<'a> Tile<'a> {
   /// Returns the tile-local raw view. `tile` is expressed relative to `raw`.
+  #[inline(always)]
   pub fn raw(&self) -> Pix2DView<'a, f32> {
     self.raw.view(self.tile)
   }
 
   /// Returns a CFA whose `(0, 0)` phase matches the tile-local raw view.
+  #[inline(always)]
   pub fn cfa(&self) -> CFA {
     self.cfa.shift(self.tile.p.x, self.tile.p.y)
   }
 
   /// Returns the output pixel at tile-local `(row, col)` when it belongs to
   /// this tile's core; writes outside the core go to `_garbage`.
+  #[inline(always)]
   pub fn rgb_mut(&mut self, row: usize, col: usize) -> &mut [f32; 3] {
     debug_assert!(row < self.tile.d.h, "row is outside the tile");
     debug_assert!(col < self.tile.d.w, "column is outside the tile");

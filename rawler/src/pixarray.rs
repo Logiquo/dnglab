@@ -203,6 +203,13 @@ where
     crop(&self, area)
   }
 
+  pub fn view(&self, area: Rect) -> Pix2DView<'_, T> {
+    debug_assert!(self.initialized);
+    debug_assert!(area.p.x <= self.width && area.d.w <= self.width - area.p.x, "view extends beyond image width");
+    debug_assert!(area.p.y <= self.height && area.d.h <= self.height - area.p.y, "view extends beyond image height");
+    Pix2DView { rect: area, inner: self }
+  }
+
   pub fn into_crop(self, area: Rect) -> Self {
     if self.dim() == area.d && area.p == Point::zero() {
       self // No-Op
@@ -351,6 +358,23 @@ where
 
 unsafe impl<T> Sync for SharedPix2D<T> where T: SubPixel {}
 
+pub struct Pix2DView<'a, T> {
+  rect: Rect,
+  inner: &'a Pix2D<T>,
+}
+
+impl<'a, T> Pix2DView<'a, T>
+where
+  T: Copy + Default + Send,
+{
+  #[inline(always)]
+  pub fn at(&self, row: usize, col: usize) -> &T {
+    debug_assert!(row < self.rect.d.h, "row is outside the view");
+    debug_assert!(col < self.rect.d.w, "column is outside the view");
+    self.inner.at(row + self.rect.p.y, col + self.rect.p.x)
+  }
+}
+
 #[derive(Clone)]
 pub struct Color2D<T, const N: usize> {
   pub width: usize,
@@ -489,6 +513,12 @@ where
     Self::new_with(output, area.d.w, area.d.h)
   }
 
+  pub fn view(&self, area: Rect) -> Color2DView<'_, T, N> {
+    debug_assert!(area.p.x <= self.width && area.d.w <= self.width - area.p.x, "view extends beyond image width");
+    debug_assert!(area.p.y <= self.height && area.d.h <= self.height - area.p.y, "view extends beyond image height");
+    Color2DView { rect: area, inner: self }
+  }
+
   pub fn rotate_90cw(&self) -> Self {
     let mut out = Self::new(self.height, self.width);
     let out_width = out.width;
@@ -499,7 +529,6 @@ where
     });
     out
   }
-
   pub fn rotate_90ccw(&self) -> Self {
     let mut out = Self::new(self.height, self.width);
     let out_width = out.width;
@@ -514,6 +543,24 @@ where
   pub fn rotate_180(&self) -> Self {
     let data = self.pixels().iter().rev().copied().collect_vec();
     Self::new_with(data, self.width, self.height)
+  }
+}
+
+pub struct Color2DView<'a, T, const N: usize> {
+  rect: Rect,
+  inner: &'a Color2D<T, N>,
+}
+
+impl<'a, T, const N: usize> Color2DView<'a, T, N>
+where
+  T: Copy + Clone + Default + Send,
+  [T; N]: Default,
+{
+  #[inline(always)]
+  pub fn at(&self, row: usize, col: usize) -> &[T; N] {
+    debug_assert!(row < self.rect.d.h, "row is outside the view");
+    debug_assert!(col < self.rect.d.w, "column is outside the view");
+    self.inner.at(row + self.rect.p.y, col + self.rect.p.x)
   }
 }
 

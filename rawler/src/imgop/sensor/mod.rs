@@ -10,6 +10,7 @@ use crate::{
 
 pub mod bayer;
 pub mod xtrans;
+pub(crate) mod tiles;
 
 /// Identifies the type of color filter array (CFA) sensor.
 ///

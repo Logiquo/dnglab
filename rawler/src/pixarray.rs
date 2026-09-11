@@ -359,8 +359,8 @@ where
 unsafe impl<T> Sync for SharedPix2D<T> where T: SubPixel {}
 
 pub struct Pix2DView<'a, T> {
-  rect: Rect,
-  inner: &'a Pix2D<T>,
+  pub rect: Rect,
+  pub inner: &'a Pix2D<T>,
 }
 
 impl<'a, T> Pix2DView<'a, T>
@@ -564,8 +564,8 @@ where
 }
 
 pub struct Color2DView<'a, T, const N: usize> {
-  rect: Rect,
-  inner: &'a Color2D<T, N>,
+  pub rect: Rect,
+  pub inner: &'a Color2D<T, N>,
 }
 
 impl<'a, T, const N: usize> Color2DView<'a, T, N>

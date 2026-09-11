@@ -689,6 +689,33 @@ where
   }
 }
 
+impl<T> BorderPadding<T> for Pix2DView<'_, T>
+where
+  T: Copy + Default + Send,
+{
+  #[inline(always)]
+  fn at_reflect(&self, row: isize, col: isize, repeat_edge: bool) -> &T {
+    if repeat_edge {
+      let new_row = reflect_repeat_edge(row, self.rect.d.h);
+      let new_col = reflect_repeat_edge(col, self.rect.d.w);
+      self.at(new_row, new_col)
+    } else {
+      let new_row = reflect_unique_edge(row, self.rect.d.h);
+      let new_col = reflect_unique_edge(col, self.rect.d.w);
+      self.at(new_row, new_col)
+    }
+  }
+
+  #[inline(always)]
+  fn at_padding<'a>(&'a self, row: isize, col: isize, constant: &'a T) -> &'a T {
+    if row >= 0 && (row as usize) < self.rect.d.h && col >= 0 && (col as usize) < self.rect.d.w {
+      self.at(row as usize, col as usize)
+    } else {
+      constant
+    }
+  }
+}
+
 impl<T, const N: usize> BorderPadding<[T; N]> for Color2D<T, N>
 where
   T: Copy + Clone + Default + Send,
@@ -706,6 +733,34 @@ where
   #[inline(always)]
   fn at_padding<'a>(&'a self, row: isize, col: isize, constant: &'a [T; N]) -> &'a [T; N] {
     if row >= 0 && (row as usize) < self.height && col >= 0 && (col as usize) < self.width {
+      self.at(row as usize, col as usize)
+    } else {
+      constant
+    }
+  }
+}
+
+impl<T, const N: usize> BorderPadding<[T; N]> for Color2DView<'_, T, N>
+where
+  T: Copy + Clone + Default + Send,
+  [T; N]: Default,
+{
+  #[inline(always)]
+  fn at_reflect(&self, row: isize, col: isize, repeat_edge: bool) -> &[T; N] {
+    if repeat_edge {
+      let new_row = reflect_repeat_edge(row, self.rect.d.h);
+      let new_col = reflect_repeat_edge(col, self.rect.d.w);
+      self.at(new_row, new_col)
+    } else {
+      let new_row = reflect_unique_edge(row, self.rect.d.h);
+      let new_col = reflect_unique_edge(col, self.rect.d.w);
+      self.at(new_row, new_col)
+    }
+  }
+
+  #[inline(always)]
+  fn at_padding<'a>(&'a self, row: isize, col: isize, constant: &'a [T; N]) -> &'a [T; N] {
+    if row >= 0 && (row as usize) < self.rect.d.h && col >= 0 && (col as usize) < self.rect.d.w {
       self.at(row as usize, col as usize)
     } else {
       constant

@@ -729,14 +729,24 @@ where
 {
   #[inline(always)]
   fn at_reflect(&self, row: isize, col: isize, repeat_edge: bool) -> &T {
-    // A view is not an image boundary: its coordinates are relative to the
-    // backing image, whose borders determine reflection behavior.
-    self.inner.at_reflect(row + self.rect.p.y as isize, col + self.rect.p.x as isize, repeat_edge)
+    if repeat_edge {
+      let new_row = reflect_repeat_edge(row, self.rect.d.h);
+      let new_col = reflect_repeat_edge(col, self.rect.d.w);
+      self.inner.at(new_row + self.rect.p.y, new_col + self.rect.p.x)
+    } else {
+      let new_row = reflect_unique_edge(row, self.rect.d.h);
+      let new_col = reflect_unique_edge(col, self.rect.d.w);
+      self.inner.at(new_row + self.rect.p.y, new_col + self.rect.p.x)
+    }
   }
 
   #[inline(always)]
   fn at_padding<'a>(&'a self, row: isize, col: isize, constant: &'a T) -> &'a T {
-    self.inner.at_padding(row + self.rect.p.y as isize, col + self.rect.p.x as isize, constant)
+    if row >= 0 && (row as usize) < self.height() && col >= 0 && (col as usize) < self.width() {
+      self.at(row as usize, col as usize)
+    } else {
+      constant
+    }
   }
 }
 
@@ -771,14 +781,24 @@ where
 {
   #[inline(always)]
   fn at_reflect(&self, row: isize, col: isize, repeat_edge: bool) -> &[T; N] {
-    // A view is not an image boundary: its coordinates are relative to the
-    // backing image, whose borders determine reflection behavior.
-    self.inner.at_reflect(row + self.rect.p.y as isize, col + self.rect.p.x as isize, repeat_edge)
+    if repeat_edge {
+      let new_row = reflect_repeat_edge(row, self.rect.d.h);
+      let new_col = reflect_repeat_edge(col, self.rect.d.w);
+      self.inner.at(new_row + self.rect.p.y, new_col + self.rect.p.x)
+    } else {
+      let new_row = reflect_unique_edge(row, self.rect.d.h);
+      let new_col = reflect_unique_edge(col, self.rect.d.w);
+      self.inner.at(new_row + self.rect.p.y, new_col + self.rect.p.x)
+    }
   }
 
   #[inline(always)]
   fn at_padding<'a>(&'a self, row: isize, col: isize, constant: &'a [T; N]) -> &'a [T; N] {
-    self.inner.at_padding(row + self.rect.p.y as isize, col + self.rect.p.x as isize, constant)
+    if row >= 0 && (row as usize) < self.height() && col >= 0 && (col as usize) < self.width() {
+      self.at(row as usize, col as usize)
+    } else {
+      constant
+    }
   }
 }
 

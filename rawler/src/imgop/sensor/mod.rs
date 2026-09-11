@@ -3,3 +3,4 @@
 
 pub mod bayer;
 pub mod xtrans;
+pub(crate) mod tiles;
